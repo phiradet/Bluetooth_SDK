@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="sdksample">
+</Property><Property Name="Solution File" Value="E:\Project\SpeakUp WP7\BT\BlueSoleil_SDK_2.0.5\SDKSample\sdksample.sln">
+</Property><Property Name="User Options File" Value="E:\Project\SpeakUp WP7\BT\BlueSoleil_SDK_2.0.5\SDKSample\sdksample.v11.suo">
+</Property><Property Name="Date" Value="Sunday, March 04, 2012">
+</Property><Property Name="Time" Value="0:14 AM">
+</Property></Properties><Event ErrorLevel="3" Project="" Source="sdksample.sln" Description="SafeUpgrade">
+</Event><Event ErrorLevel="0" Project="" Source="sdksample.sln" Description="File successfully backed up as E:\Project\SpeakUp WP7\BT\BlueSoleil_SDK_2.0.5\SDKSample\Backup\sdksample.sln">
+</Event><Event ErrorLevel="0" Project="" Source="sdksample.v11.suo" Description="File successfully backed up as E:\Project\SpeakUp WP7\BT\BlueSoleil_SDK_2.0.5\SDKSample\Backup\sdksample.v11.suo">
+</Event><Event ErrorLevel="3" Project="sdksample" Source="sdksample.dsp" Description="OneWayUpgrade">
+</Event><Event ErrorLevel="0" Project="sdksample" Source="sdksample.dsp" Description="Converting project file 'E:\Project\SpeakUp WP7\BT\BlueSoleil_SDK_2.0.5\SDKSample\sdksample.dsp'.">
+</Event><Event ErrorLevel="0" Project="sdksample" Source="sdksample.dsp" Description="Done converting to new project file 'E:\Project\SpeakUp WP7\BT\BlueSoleil_SDK_2.0.5\SDKSample\sdksample.vcxproj'.">
+</Event><Event ErrorLevel="3" Project="sdksample" Source="sdksample.dsp" Description="Converted">
+</Event><Event ErrorLevel="0" Project="" Source="sdksample.sln" Description="Solution converted successfully">
+</Event><Event ErrorLevel="3" Project="" Source="sdksample.sln" Description="Converted">
+</Event></UpgradeLog>
