@@ -410,22 +410,27 @@ int UDPserver()
 		 else if(strcmp(connectHF,data)==0)
 		 {
 			 data = strtok(NULL, delims );
-			 mHfpCreate(data);
+			 //mHfpCreate(data);
+			 mHfpWithServiceCreate(data,outputData);
+		 }
+		 else if(strcmp("exe",data)==0)
+		 {
+			 data = strtok(NULL, delims );
+			 //mHfpCreate(data);
+			 mHfpWithServiceExecute(data,outputData);
 		 }
 		 else if(strcmp(endHFP,data)==0)
 		 {
-			 mHfpTerminate();
+			 //mHfpTerminate();
+			 mHfpWithServiceTerminate();
 		 }
 		 else
 		 {
 			 strcpy(outputData,"unknown");
 
 		 }
-
          //printf("[%s:%d] %s\n", ip, port, data);
          fflush(stdout);
-
-		 
 
         //we simply send this string to the client
 		 printf("------------\ncurr output::%s\n----------------",outputData);

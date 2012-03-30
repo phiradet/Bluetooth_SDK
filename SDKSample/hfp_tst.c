@@ -20,6 +20,9 @@ Revision History:
 #include "profiles_tst.h"
 #include "Btsdk_Stru.h"
 
+#define CLOSE_SOCKET(x)          closesocket(x)
+#define SOCKET_CLEANUP()         WSACleanup()
+
 /* current remote HF device handle */ 
 static BTDEVHDL s_currRmtHFDevHdl = BTSDK_INVALID_HANDLE;
 /* current remote device's HF service handle */
@@ -202,36 +205,62 @@ Arguments:
 Return:
 	void 
 ---------------------------------------------------------------------------*/
+void UDPSendData(char* data)
+{
+	int sock;
+	struct sockaddr_in server_addr;
+	struct hostent *host = gethostbyname("127.0.0.1");
+	WSADATA wsa; 
+	WSAStartup(0x0202, &wsa);
+	if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+	{
+		perror("Socket");
+		exit(1);
+	}
+	
+	server_addr.sin_family = AF_INET;
+	server_addr.sin_port = htons(12322);
+	server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+	memset(&(server_addr.sin_zero), 0, 8);
+	sendto(sock, data, strlen(data), 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
+	CLOSE_SOCKET(sock);
+	SOCKET_CLEANUP();
+}
+
 void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUINT16 param_len)
 {
 	PBtsdk_HFP_ATCmdResultStru res = (PBtsdk_HFP_ATCmdResultStru)param;
 
 	BTUINT8 *buf = NULL;
 	buf = malloc(33);
-
+	
 	switch (event)
 	{
 	case BTSDK_HFP_EV_SLC_ESTABLISHED_IND:
 		{
 			PBtsdk_HFP_ConnInfoStru pHFAPConnInfo = (PBtsdk_HFP_ConnInfoStru)param;
 			s_currHFConnHdl = hdl;
-			printf("HF connection is created. \n>");		
+			printf("HF connection is created. \n>");
+			UDPSendData("HFcreated");
 			break;
 		}
 	case BTSDK_HFP_EV_SLC_RELEASED_IND:
 		{
 			s_currHFConnHdl = BTSDK_INVALID_HANDLE;
 			printf("HF connection is released.\n>");
+			UDPSendData("HFrelease");
 			break;
 		}
 	case BTSDK_HFP_EV_AUDIO_CONN_ESTABLISHED_IND:
 		{
 			printf("The SCO Link has been established. The SCO connection handle is %04x.\n>", *(BTUINT16*)param);
+			UDPSendData("SCOestab");
 			break;
 		}
 	case BTSDK_HFP_EV_AUDIO_CONN_RELEASED_IND:
 		{
 			printf("The SCO Link has been released.\n>");
+			UDPSendData("SCOrelease");
 			break;
 		}
 	case BTSDK_HFP_EV_STANDBY_IND:
@@ -255,17 +284,20 @@ void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUIN
 	case BTSDK_HFP_EV_ONGOINGCALL_IND:
 		{
 			printf("Ongoing Call...\n>");
+			UDPSendData("Ongoing");
 			break;
 		}
 
 	case BTSDK_HFP_EV_OUTGOINGCALL_IND:
 		{
 			printf("Outgoing Call...\n>");
+			UDPSendData("Outgoing");
 			break;
 		}
 	case BTSDK_HFP_EV_TERMINATE_LOCAL_RINGTONE_IND:
 		{
 			printf("Terminate local ringtone Call\n>");
+			UDPSendData("Terminate");
 			break;
 		}
 	case BTSDK_HFP_EV_VOICE_RECOGN_ACTIVATED_IND:
@@ -326,6 +358,7 @@ void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUIN
 				memcpy(buf, call_info->number, call_info->num_len);
 				buf[call_info->num_len] = 0;
 				printf("HF-->Calling number is: %s\n>", buf);
+				UDPSendData(strcat("calling#",buf));
 			}
 			if (call_info->name_len != 0)
 			{
@@ -341,6 +374,7 @@ void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUIN
 			memcpy(buf, network_operator->operator_name, network_operator->operator_len); /*the max value of param_len is 16.*/
 			buf[network_operator->operator_len] = 0;
 			printf("HF-->The current network operator name is: %s\n>", buf);
+			UDPSendData(strcat("operator#",buf));
 			break;
 		}
 	case BTSDK_HFP_EV_SUBSCRIBER_NUMBER_IND:
@@ -793,7 +827,7 @@ void HfpExecCmd(BTUINT8 choice)
 }
 
 
-void mHfpCreate(char* deviceAddr)
+void mHfpCreate(char* deviceAddr,char* output)
 {
 	HfpInit();
 	s_currRmtHFDevHdl=mSelectRemoteDeviceByName(0,deviceAddr);			//Select Device << Show select device menu [assign s_currRmtHFDevHdl]
@@ -802,6 +836,198 @@ void mHfpCreate(char* deviceAddr)
 	s_currHFSvcHdl=mSelectRemoteServiceByName(s_currRmtHFDevHdl,0x111f);//Select service << Show select profile menu [assign s_currHFSvcHdl]
 
 	TestConnectAGSvc();				//Connect with Audio Gateway
+	output="success";
+}
+
+void mHfpWithServiceCreate(char* deviceAddr,char* outputData)
+{
+	/*HfpInit();
+	s_currRmtHFDevHdl=mSelectRemoteDeviceByName(0,deviceAddr);			//Select Device << Show select device menu [assign s_currRmtHFDevHdl]
+
+	//TestSelectHFSvc();													
+	s_currHFSvcHdl=mSelectRemoteServiceByName(s_currRmtHFDevHdl,0x111f);//Select service << Show select profile menu [assign s_currHFSvcHdl]
+
+	TestConnectAGSvc();				//Connect with Audio Gateway*/
+	
+	BTINT32 ulRet = BTSDK_FALSE;
+	HfpInit();
+	s_currRmtHFDevHdl = mSelectRemoteDeviceByName(0,deviceAddr);
+	s_currHFSvcHdl = mSelectRemoteServiceByName(s_currRmtHFDevHdl,0x111f);
+	
+	
+	ulRet = Btsdk_Connect(s_currHFSvcHdl, 0, &s_currHFConnHdl);
+	if (BTSDK_OK != ulRet)
+	{
+		printf("Please make sure that the expected device is powered on and connectable.\n");
+		strcpy(outputData,"Please make sure that the expected device is powered on and connectable.");
+	}
+	else
+	{
+		printf("Connect to Audio GateWay successfully.\n");
+		strcpy(outputData,"success");
+	}
+	
+}
+
+void mHfpWithServiceExecute(char* command,char* output)
+{
+	char delims[]="#";
+	char currCommand = command[0];
+	BTUINT8 buf[32];
+	BTUINT32 res = 0;
+	memset(buf, 0, 32);
+
+	switch (currCommand)
+	{
+		case '1': // Answer the incoming call
+			Btsdk_HFAP_AnswerCall(s_currHFConnHdl);
+			break;
+		case '2': // Reject the incoming call or terminate an outgoing call or release an ongoing call
+			Btsdk_HFAP_CancelCall(s_currHFConnHdl);
+			break;
+		case '3': // Please dial with a phone number
+			//printf("Input the phone number: ");
+			sprintf(buf,"%s",strtok(NULL, delims ));
+			//buf = strtok(NULL, delims );
+			if (strlen(buf) != 0)
+			{
+				Btsdk_HFAP_Dial(s_currHFConnHdl, buf, (BTUINT16)strlen(buf));
+			}
+			break;
+		case '4': // Last number redial
+			Btsdk_HFAP_LastNumRedial(s_currHFConnHdl);
+			break;
+		case '5': // Memory dialing
+			printf("Input the memory location: ");
+			scanf("%s", buf);
+			if (strlen(buf) != 0)
+				Btsdk_HFAP_MemNumDial(s_currHFConnHdl, buf, (BTUINT16)strlen(buf));
+			break;
+		case '6': // Transmit DTMF
+			sprintf(strtok(NULL, delims ),"%s", buf);
+			if ((buf[0] >= '0' && buf[0] <= '9') || buf[0] == '*' || buf[0] == '#')
+				Btsdk_HFAP_TxDTMF(s_currHFConnHdl, buf[0]);
+			break;
+		case '7':
+			printf("Turn microphone volume of cell phone to the Max.");
+			Btsdk_HFAP_SetMicVol(s_currHFConnHdl, '15');
+			break;
+		case '8':
+			printf("Turn speaker volume of cell phone to the Max.");
+			Btsdk_HFAP_SetSpkVol(s_currHFConnHdl, '15');
+			break;
+		case '9': // Disable the EC and NR on AG
+			Btsdk_HFAP_DisableNREC(s_currHFConnHdl);
+			break;
+		case 'a': // Request for Current Network Operator Name
+			Btsdk_HFAP_NetworkOperatorReq(s_currHFConnHdl);
+			// The network operator name will be returned by BTSDK_HFP_EV_NETWORK_OPERATOR_IND event.
+			break;
+		case 'b': // SCO Audio Switching
+			Btsdk_HFAP_AudioConnTrans(s_currHFConnHdl);
+			break;
+		case 'c': // Request for Subscriber Info
+			res = Btsdk_HFAP_GetSubscriberNumber(s_currHFConnHdl);
+			// The subscriber info will be returned by BTSDK_HFP_EV_SUBSCRIBER_NUMBER_IND event.
+			break;
+		case 'd': // Request for current call list
+			res = Btsdk_HFAP_GetCurrentCalls(s_currHFConnHdl);
+			// The information of each existing call will be returned by BTSDK_HFP_EV_CURRENT_CALLS_IND event.
+			break;
+		case 'e': // Request for manufacturer and model ID
+			{
+				BTUINT8 *m_id;
+				BTUINT16 m_len = 0;
+				res = Btsdk_HFAP_GetManufacturerID(s_currHFConnHdl, NULL, &m_len);
+				if (m_len != 0)
+				{
+					m_id = (BTUINT8*)malloc(m_len);
+					memset(m_id, 0, m_len);
+					Btsdk_HFAP_GetManufacturerID(s_currHFConnHdl, m_id, &m_len);
+					printf("HF-->Manufacturer of the AG is: %s\n>", m_id);
+					free(m_id);
+				}
+				m_len = 0;
+				Btsdk_HFAP_GetModelID(s_currHFConnHdl, NULL, &m_len);
+				if (m_len != 0)
+				{
+					m_id = (BTUINT8*)malloc(m_len);
+					memset(m_id, 0, m_len);
+					Btsdk_HFAP_GetModelID(s_currHFConnHdl, m_id, &m_len);
+					printf("HF-->Model ID of the AG is: %s\n>", m_id);
+					free(m_id);
+				}
+				break;
+			}
+		case 'f': //AT command
+			{
+				sprintf(strtok(NULL, delims ),"%s", buf);
+				if (strlen(buf) != 0)
+				{
+					strcat(buf, "\r");
+					Btsdk_HFP_ExtendCmd(s_currHFConnHdl, buf, (BTUINT16)strlen(buf), 6000);
+					// After this command is transmited and before receiving one of "OK", "ERROR" or "+CMER", 
+					// all the result codes responded by AG will be returned by BTSDK_HFP_EV_EXTEND_CMD_IND event.
+					// The ending "OK", "ERROR" or "+CMER" will also be returned by BTSDK_HFP_EV_EXTEND_CMD_IND event.
+				}
+				//free(ext_cmd);
+				//break;
+			}
+		case 'g': // Attach a phone number to a voice tag
+			res = Btsdk_HFAP_VoiceTagPhoneNumReq(s_currHFConnHdl);
+			// The phone number will be returned by BTSDK_HFP_EV_VOICETAG_PHONE_NUM_IND event.
+			break;
+		case 'h': // Activate or deactivate voice recognition
+			s_hf_bvra_enable = s_hf_bvra_enable ^ 1;
+			Btsdk_HFAP_VoiceRecognitionReq(s_currHFConnHdl, s_hf_bvra_enable);
+			break;
+		case 'i':
+			if (BTSDK_INVALID_HANDLE == s_currHFConnHdl)
+			{
+				printf("If there is not a connection existing, please establish a connection first.\n");
+				strcpy(output,"If there is not a connection existing, please establish a connection first.");
+				break;
+			}
+			res=Btsdk_Disconnect(s_currHFConnHdl);
+			if(res==BTSDK_OK)
+			{
+				strcpy(output,"success");
+			}
+			else
+			{
+				mPrintErrorMessage(res,output);
+			}
+			PrintErrorMessage(res, BTSDK_TRUE);
+			s_currHFConnHdl = BTSDK_INVALID_HANDLE;
+			break;
+		default:
+			strcpy(output,"**Invalid Command!**");
+			printf("**Invalid Command!**\n>");
+			break;
+	}
+
+}
+
+void mHfpWithServiceTerminate(char* output)
+{
+	BTUINT32 res = 0;
+	if (BTSDK_INVALID_HANDLE == s_currHFConnHdl)
+	{
+		printf("If there is not a connection existing, please establish a connection first.\n");
+		strcpy(output,"If there is not a connection existing, please establish a connection first.");
+		
+	}
+	res=Btsdk_Disconnect(s_currHFConnHdl);
+	if(res==BTSDK_OK)
+	{
+		strcpy(output,"success");
+	}
+	else
+	{
+		mPrintErrorMessage(res,output);
+	}
+	PrintErrorMessage(res, BTSDK_TRUE);
+	s_currHFConnHdl = BTSDK_INVALID_HANDLE;
 }
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

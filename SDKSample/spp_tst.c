@@ -180,7 +180,7 @@ void mDUNConnect(char* deviceAddr,char* portNum)
 	s_currSppSvcHdl=mSelectRemoteServiceByName(s_currRmtSppDevHdl,BTSDK_CLS_DIALUP_NET);
 
 	s_ComSerialNum = Btsdk_GetASerialNum();
-	printf("port number:%d",s_ComSerialNum);
+	//printf("port number:%d",s_ComSerialNum);
 	Btsdk_PlugInVComm(s_ComSerialNum , &OSComPort ,1 ,COMM_SET_RECORD|COMM_SET_USAGETYPE, 2200);
 	//ulRet = Btsdk_InitCommObj((BTUINT8)OSComPort, BTSDK_CLS_SERIAL_PORT);
 	ulRet = Btsdk_InitCommObj((BTUINT8)OSComPort, BTSDK_CLS_DIALUP_NET);
@@ -204,7 +204,7 @@ void mDUNConnect(char* deviceAddr,char* portNum)
 	else
 	{
 		PrintErrorMessage(ulRet, BTSDK_TRUE);
-		portNum="error";
+		mPrintErrorMessage(ulRet, portNum);
 	}
 }
 

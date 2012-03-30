@@ -803,7 +803,7 @@ void mTest_Btsdk_PairDevice(int nIdx,char* output)
 	else
 	{
 		PrintErrorMessage(ulResult,  BTSDK_TRUE);
-		output="error";
+		mPrintErrorMessage(ulResult,  output);
 	}
 }
 
@@ -845,7 +845,7 @@ void mTest_Btsdk_UnPairDevice(char* output)
 	else
 	{
 		PrintErrorMessage(ulResult,  BTSDK_TRUE);
-		strcpy(output,"error");
+		mPrintErrorMessage(ulResult,  output);
 	}
 }
 
