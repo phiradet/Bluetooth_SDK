@@ -496,7 +496,6 @@ char* mDisplayRemoteDevices(BTUINT32 dev_class,char* output)
 {
 	int nIdx = 0;
 	char szChoice[4] = {0};
-	//char output[1024]="";
 	char tmp[1024]="";
 
 	int i = 0;
@@ -509,7 +508,7 @@ char* mDisplayRemoteDevices(BTUINT32 dev_class,char* output)
 	char cQuote = ' ';
 
 	GetAllRmtDevHdl();
-
+	strcpy(output,"");
 	//printf("Remote devices searched:\n");
 	//printf("number  device name %21hc device address %4hc device class\n", cQuote, cQuote);
 
@@ -527,15 +526,6 @@ char* mDisplayRemoteDevices(BTUINT32 dev_class,char* output)
 			i--;			
 			continue;
 		}
-		/*In order to display neatly.
- 		if (i<9)
- 		{
-			printf("  %d%5hc", i + 1, cQuote);
- 		}
-		else
-		{
-			printf("  %d%4hc", i + 1, cQuote);
- 		}*/
 		
 		usLen = 32;
 		if (Btsdk_GetRemoteDeviceName(s_rmt_dev_hdls[i], szDevName, &usLen) != BTSDK_OK)
@@ -802,6 +792,8 @@ void mTest_Btsdk_PairDevice(int nIdx,char* output)
 {
 	BTDEVHDL dev_hdl=s_rmt_dev_hdls[nIdx - 1];
 	BTUINT32 ulResult = BTSDK_OK;
+	output="";
+	s_curr_dev=dev_hdl;
 	printf("Pairing...\n");
 	ulResult = Btsdk_PairDevice(dev_hdl);
 	if (BTSDK_OK == ulResult)
@@ -814,6 +806,8 @@ void mTest_Btsdk_PairDevice(int nIdx,char* output)
 		output="error";
 	}
 }
+
+
 
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -838,7 +832,22 @@ void Test_Btsdk_UnPairDevice(BTDEVHDL dev_hdl)
 		PrintErrorMessage(ulResult,  BTSDK_TRUE);
 	}
 }
-
+void mTest_Btsdk_UnPairDevice(char* output)
+{
+	BTUINT32 ulResult = BTSDK_OK;
+	printf("Unpairing with the remote device...\n");
+	ulResult = Btsdk_UnPairDevice(s_curr_dev);
+	if (BTSDK_OK == ulResult)
+	{
+		printf("Unpair with the remote device successfully.\n");
+		strcpy(output,"success");
+	}
+	else
+	{
+		PrintErrorMessage(ulResult,  BTSDK_TRUE);
+		strcpy(output,"error");
+	}
+}
 
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

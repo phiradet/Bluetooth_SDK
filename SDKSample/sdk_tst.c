@@ -376,7 +376,11 @@ int UDPserver()
 		 {
 			data = strtok(NULL, delims );
 			mTest_Btsdk_PairDevice(atoi(data),outputData);
-			printf("PAIR REQUEST");
+			printf("PAIR REQUEST -successfull");
+		 }
+		 else if(strcmp(unsyncDevice,data)==0)
+		 {
+			 mTest_Btsdk_UnPairDevice(outputData);
 		 }
 		 else if(strcmp(getProperty,data)==0)
 		 {
@@ -424,6 +428,7 @@ int UDPserver()
 		 
 
         //we simply send this string to the client
+		 printf("------------\ncurr output::%s\n----------------",outputData);
 		 sendto(sock, outputData, strlen(outputData), 0, (struct sockaddr *) &client_addr, sizeof(client_addr));
       }
    }
