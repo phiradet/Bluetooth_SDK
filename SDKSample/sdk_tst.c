@@ -267,7 +267,7 @@ char* GetExistingDevice()
 			i--;			
 			continue;
 		}
-		/*In order to display neatly.*/
+		//In order to display neatly.
  		if (i<9)
  		{
 			sprintf(tmp,"  %d%5hc", i + 1, cQuote);
@@ -367,6 +367,7 @@ int UDPserver()
          strcpy(ip, inet_ntoa(client_addr.sin_addr));
          port = ntohs(client_addr.sin_port);
          raw_data[bytes_received] = '\0';
+		 printf("----------------\nreceived cmd::%s\n----------------\n",raw_data);
 		 data = strtok( raw_data, delims );
 		 if(strcmp(getExistingDevice,data)==0)
 		 {

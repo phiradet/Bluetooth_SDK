@@ -274,7 +274,7 @@ void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUIN
 	case BTSDK_HFP_EV_AUDIO_CONN_RELEASED_IND:
 		{
 			printf("The SCO Link has been released.\n>");
-			//UDPSendData("SCOrelease");
+			UDPSendData("SCOrelease");
 			break;
 		}
 	case BTSDK_HFP_EV_STANDBY_IND:
@@ -989,7 +989,7 @@ void mHfpWithServiceExecute(char* command,char* output)
 				Btsdk_HFAP_MemNumDial(s_currHFConnHdl, buf, (BTUINT16)strlen(buf));
 			break;
 		case '6': // Transmit DTMF
-			sprintf(strtok(NULL, delims ),"%s", buf);
+			sprintf(buf,"%s",strtok(NULL, delims ));
 			if ((buf[0] >= '0' && buf[0] <= '9') || buf[0] == '*' || buf[0] == '#')
 				Btsdk_HFAP_TxDTMF(s_currHFConnHdl, buf[0]);
 			break;
@@ -1046,7 +1046,7 @@ void mHfpWithServiceExecute(char* command,char* output)
 			}
 		case 'f': //AT command
 			{
-				sprintf(strtok(NULL, delims ),"%s", buf);
+				sprintf(buf,"%s",strtok(NULL, delims ));
 				if (strlen(buf) != 0)
 				{
 					strcat(buf, "\r");
