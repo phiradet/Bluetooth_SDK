@@ -23,6 +23,11 @@ Revision History:
 #define CLOSE_SOCKET(x)          closesocket(x)
 #define SOCKET_CLEANUP()         WSACleanup()
 
+#define SLEEP 0
+#define INCOMING 1
+#define OUTGOING 2
+#define ONGOING 3
+
 /* current remote HF device handle */ 
 static BTDEVHDL s_currRmtHFDevHdl = BTSDK_INVALID_HANDLE;
 /* current remote device's HF service handle */
@@ -42,6 +47,8 @@ static BTSVCHDL s_hsag_svc = BTSDK_INVALID_HANDLE;	// Headset AG service
 
 static BTSVCHDL s_hf_svc = BTSDK_INVALID_HANDLE;
 static BTSVCHDL s_hs_svc = BTSDK_INVALID_HANDLE;
+
+static int HFP_STATE;
 
 
 /*+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -224,11 +231,18 @@ void UDPSendData(char* data)
 	memset(&(server_addr.sin_zero), 0, 8);
 	sendto(sock, data, strlen(data), 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
 	CLOSE_SOCKET(sock);
+	//WSACleanup();
 	SOCKET_CLEANUP();
 }
 
 void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUINT16 param_len)
 {
+	int sock;
+	struct sockaddr_in server_addr;
+	struct hostent *host = gethostbyname("127.0.0.1");
+	WSADATA wsa; 
+	char data[512]="";
+	//---------------------------------------------------------------------
 	PBtsdk_HFP_ATCmdResultStru res = (PBtsdk_HFP_ATCmdResultStru)param;
 
 	BTUINT8 *buf = NULL;
@@ -241,26 +255,26 @@ void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUIN
 			PBtsdk_HFP_ConnInfoStru pHFAPConnInfo = (PBtsdk_HFP_ConnInfoStru)param;
 			s_currHFConnHdl = hdl;
 			printf("HF connection is created. \n>");
-			UDPSendData("HFcreated");
+			//UDPSendData("HFcreated");
 			break;
 		}
 	case BTSDK_HFP_EV_SLC_RELEASED_IND:
 		{
 			s_currHFConnHdl = BTSDK_INVALID_HANDLE;
 			printf("HF connection is released.\n>");
-			UDPSendData("HFrelease");
+			//UDPSendData("HFrelease");
 			break;
 		}
 	case BTSDK_HFP_EV_AUDIO_CONN_ESTABLISHED_IND:
 		{
 			printf("The SCO Link has been established. The SCO connection handle is %04x.\n>", *(BTUINT16*)param);
-			UDPSendData("SCOestab");
+			//UDPSendData("SCOestab");
 			break;
 		}
 	case BTSDK_HFP_EV_AUDIO_CONN_RELEASED_IND:
 		{
 			printf("The SCO Link has been released.\n>");
-			UDPSendData("SCOrelease");
+			//UDPSendData("SCOrelease");
 			break;
 		}
 	case BTSDK_HFP_EV_STANDBY_IND:
@@ -284,19 +298,28 @@ void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUIN
 	case BTSDK_HFP_EV_ONGOINGCALL_IND:
 		{
 			printf("Ongoing Call...\n>");
-			UDPSendData("Ongoing");
+			if(HFP_STATE != ONGOING)
+			{
+				HFP_STATE = ONGOING;
+				UDPSendData("Ongoing");
+			}
 			break;
 		}
 
 	case BTSDK_HFP_EV_OUTGOINGCALL_IND:
 		{
 			printf("Outgoing Call...\n>");
-			UDPSendData("Outgoing");
+			if(HFP_STATE != OUTGOING)
+			{
+				HFP_STATE = OUTGOING;
+				UDPSendData("Outgoing");
+			}
 			break;
 		}
 	case BTSDK_HFP_EV_TERMINATE_LOCAL_RINGTONE_IND:
 		{
 			printf("Terminate local ringtone Call\n>");
+			HFP_STATE=SLEEP;
 			UDPSendData("Terminate");
 			break;
 		}
@@ -358,14 +381,53 @@ void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUIN
 				memcpy(buf, call_info->number, call_info->num_len);
 				buf[call_info->num_len] = 0;
 				printf("HF-->Calling number is: %s\n>", buf);
-				UDPSendData(strcat("calling#",buf));
+				if(HFP_STATE!=INCOMING)
+				{
+					WSAStartup(0x0202, &wsa);
+					if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+					{
+						perror("Socket");
+						exit(1);
+					}
+	
+					server_addr.sin_family = AF_INET;
+					server_addr.sin_port = htons(12322);
+					server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+					memset(&(server_addr.sin_zero), 0, 8);
+					strcpy(data,"calling#");
+					strcat(data,buf);
+					sendto(sock, data, strlen(data), 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
+					HFP_STATE=INCOMING;
+					CLOSE_SOCKET(sock);
+					SOCKET_CLEANUP();
+				}
 			}
-			if (call_info->name_len != 0)
+			/*if (call_info->name_len != 0)
 			{
 				memcpy(buf, call_info->alpha_str, call_info->name_len);
 				buf[call_info->name_len] = 0;
 				printf("HF-->Calling name is: %s\n>", buf);
-			}
+				if(HFP_STATE!=INCOMING)
+				{
+					HFP_STATE=INCOMING;
+					WSAStartup(0x0202, &wsa);
+					if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+					{
+						perror("Socket");
+						exit(1);
+					}
+	
+					server_addr.sin_family = AF_INET;
+					server_addr.sin_port = htons(12322);
+					server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+					memset(&(server_addr.sin_zero), 0, 8);
+					strcpy(DATABITS_16,strcat("calling#",buf));
+					sendto(sock, data, strlen(data), 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
+					CLOSE_SOCKET(sock);
+					SOCKET_CLEANUP();
+					
+				}
+			}*/
 			break;
 		}
 	case BTSDK_HFP_EV_NETWORK_OPERATOR_IND:
@@ -374,7 +436,27 @@ void Test_HfpAPCallbackFunc(BTCONNHDL hdl, BTUINT16 event, BTUINT8 *param, BTUIN
 			memcpy(buf, network_operator->operator_name, network_operator->operator_len); /*the max value of param_len is 16.*/
 			buf[network_operator->operator_len] = 0;
 			printf("HF-->The current network operator name is: %s\n>", buf);
-			UDPSendData(strcat("operator#",buf));
+			
+			WSAStartup(0x0202, &wsa);
+			if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+			{
+				perror("Socket");
+				exit(1);
+			}
+	
+			server_addr.sin_family = AF_INET;
+			server_addr.sin_port = htons(12322);
+			server_addr.sin_addr = *((struct in_addr *)host->h_addr);
+			memset(&(server_addr.sin_zero), 0, 8);
+			strcpy(data,"operator#");
+			strcat(data,buf);
+			
+			sendto(sock, data, strlen(data), 0, (struct sockaddr *) &server_addr, sizeof(server_addr));
+			//HFP_STATE=INCOMING;
+			CLOSE_SOCKET(sock);
+			//WSACleanup();
+			SOCKET_CLEANUP();
+			
 			break;
 		}
 	case BTSDK_HFP_EV_SUBSCRIBER_NUMBER_IND:
@@ -830,6 +912,7 @@ void HfpExecCmd(BTUINT8 choice)
 void mHfpCreate(char* deviceAddr,char* output)
 {
 	HfpInit();
+	HFP_STATE = SLEEP;
 	s_currRmtHFDevHdl=mSelectRemoteDeviceByName(0,deviceAddr);			//Select Device << Show select device menu [assign s_currRmtHFDevHdl]
 
 	//TestSelectHFSvc();													
@@ -851,11 +934,13 @@ void mHfpWithServiceCreate(char* deviceAddr,char* outputData)
 	
 	BTINT32 ulRet = BTSDK_FALSE;
 	HfpInit();
+
 	s_currRmtHFDevHdl = mSelectRemoteDeviceByName(0,deviceAddr);
 	s_currHFSvcHdl = mSelectRemoteServiceByName(s_currRmtHFDevHdl,0x111f);
 	
 	
 	ulRet = Btsdk_Connect(s_currHFSvcHdl, 0, &s_currHFConnHdl);
+	HFP_STATE = SLEEP;
 	if (BTSDK_OK != ulRet)
 	{
 		printf("Please make sure that the expected device is powered on and connectable.\n");
